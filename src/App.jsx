@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { fetchProducts, addProduct, deleteProduct } from './api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -8,21 +8,28 @@ function App() {
   const [menus, setMenus] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- CONFIG: Link Backend Vercel Anda ---
+  const API_BASE_URL = 'https://culinexsystems.vercel.app/api';
+
   // --- STATES ---
   const [ingredientData, setIngredientData] = useState({ name: '', category: 'Bahan Makanan', stock: '', unit: 'gram', totalCost: '' });
   const [menuData, setMenuData] = useState({ name: '', category: 'Main Course', margin: 2.5 });
   const [recipeItems, setRecipeItems] = useState([{ ingredient: '', amount: '' }]);
   const [transactionData, setTransactionData] = useState({ menuId: '', quantity: '' });
 
+  // --- FUNGSI AMBIL DATA KESELURUHAN ---
   const fetchData = async () => {
     try {
-      const response = await fetchProducts();
-      setIngredients(response.data);
+      const [ingRes, menuRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/ingredients`),
+        axios.get(`${API_BASE_URL}/menus`)
+      ]);
+      setIngredients(ingRes.data);
       setMenus(menuRes.data);
       setIsLoading(false);
-    } catch (err) { 
-      console.error("Fetch error:", err); 
-      setIsLoading(false); 
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setIsLoading(false);
     }
   };
 
@@ -31,7 +38,8 @@ function App() {
   const handleDelete = async (type, id, name) => {
     if (window.confirm(`⚠️ Hapus "${name}" secara permanen?`)) {
       try {
-        await deleteProduct(id);
+        const endpoint = type === 'ingredient' ? 'ingredients' : 'menus';
+        await axios.delete(`${API_BASE_URL}/${endpoint}/${id}`);
         fetchData();
       } catch (err) { alert("❌ Gagal: " + (err.response?.data?.message || err.message)); }
     }
@@ -41,7 +49,7 @@ function App() {
   const handleIngredientSubmit = async (e) => {
     e.preventDefault();
     try {
-      await addProduct(ingredientData);
+      await axios.post(`${API_BASE_URL}/ingredients`, ingredientData);
       setIngredientData({ name: '', category: 'Bahan Makanan', stock: '', unit: 'gram', totalCost: '' });
       fetchData();
       alert("🚀 Material Synced!");
@@ -55,7 +63,6 @@ function App() {
     }
     try {
       const payload = { ...menuData, recipe: recipeItems };
-      // Pastikan baris ini ADA dan TIDAK dikomentari:
       await axios.post(`${API_BASE_URL}/menus`, payload); 
       setMenuData({ name: '', category: 'Main Course', margin: 2.5 });
       setRecipeItems([{ ingredient: '', amount: '' }]);
@@ -67,16 +74,14 @@ function App() {
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Placeholder for transaction submission
-      // await addTransaction(transactionData);
-      alert("❌ Transaction endpoint needs backend implementation");
-      // setTransactionData({ menuId: '', quantity: '' });
-      // fetchData();
-      // alert("💸 Transaction Executed!");
-    } catch (err) { alert("❌ " + err.message); }
+      await axios.post(`${API_BASE_URL}/transactions`, transactionData);
+      setTransactionData({ menuId: '', quantity: '' });
+      fetchData();
+      alert("💸 Transaction Executed!");
+    } catch (err) { alert("❌ " + (err.response?.data?.message || err.message)); }
   };
 
-  // --- STYLING (Calibrated for Centering) ---
+  // --- STYLING ---
   const styles = {
     container: { display: 'flex', minHeight: '100vh', backgroundColor: '#020617', color: '#f8fafc', fontFamily: "'Orbitron', sans-serif" },
     sidebar: { width: '280px', backgroundColor: '#0f172a', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', padding: '30px 20px', position: 'fixed', height: '100vh', zIndex: 100 },
@@ -87,9 +92,9 @@ function App() {
       backgroundColor: '#020617',
       display: 'flex',
       flexDirection: 'column',
-      alignItems: 'center' // Memastikan semua anak elemen berada di tengah secara horizontal
+      alignItems: 'center'
     },
-    innerContainer: { width: '100%', maxWidth: '1000px', margin: '0 auto' }, // Wrapper untuk konten tiap tab
+    innerContainer: { width: '100%', maxWidth: '1000px', margin: '0 auto' },
     navButton: (active) => ({
       padding: '15px 20px', marginBottom: '10px', borderRadius: '12px', cursor: 'pointer', border: 'none', textAlign: 'left', fontSize: '14px', fontWeight: 'bold', transition: '0.3s',
       backgroundColor: active ? '#3b82f6' : 'transparent', color: active ? 'white' : '#94a3b8', boxShadow: active ? '0 0 20px rgba(59, 130, 246, 0.4)' : 'none'
