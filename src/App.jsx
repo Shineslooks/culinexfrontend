@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { fetchProducts, addProduct, deleteProduct } from './api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -16,12 +16,14 @@ function App() {
 
   const fetchData = async () => {
     try {
-      const ingRes = await axios.get('http://localhost:5000/api/ingredients');
-      const menuRes = await axios.get('http://localhost:5000/api/menus');
-      setIngredients(ingRes.data);
+      const response = await fetchProducts();
+      setIngredients(response.data);
       setMenus(menuRes.data);
       setIsLoading(false);
-    } catch (err) { console.error("Fetch error:", err); setIsLoading(false); }
+    } catch (err) { 
+      console.error("Fetch error:", err); 
+      setIsLoading(false); 
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -29,8 +31,7 @@ function App() {
   const handleDelete = async (type, id, name) => {
     if (window.confirm(`⚠️ Hapus "${name}" secara permanen?`)) {
       try {
-        const endpoint = type === 'ingredient' ? 'ingredients' : 'menus';
-        await axios.delete(`http://localhost:5000/api/${endpoint}/${id}`);
+        await deleteProduct(id);
         fetchData();
       } catch (err) { alert("❌ Gagal: " + (err.response?.data?.message || err.message)); }
     }
@@ -40,7 +41,7 @@ function App() {
   const handleIngredientSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/ingredients', ingredientData);
+      await addProduct(ingredientData);
       setIngredientData({ name: '', category: 'Bahan Makanan', stock: '', unit: 'gram', totalCost: '' });
       fetchData();
       alert("🚀 Material Synced!");
@@ -49,23 +50,29 @@ function App() {
 
   const handleMenuSubmit = async (e) => {
     e.preventDefault();
+    if (recipeItems.some(item => !item.ingredient || !item.amount)) {
+      return alert("⚠️ Lengkapi konfigurasi resep!");
+    }
     try {
       const payload = { ...menuData, recipe: recipeItems };
-      await axios.post('http://localhost:5000/api/menus', payload);
+      // Pastikan baris ini ADA dan TIDAK dikomentari:
+      await axios.post(`${API_BASE_URL}/menus`, payload); 
       setMenuData({ name: '', category: 'Main Course', margin: 2.5 });
       setRecipeItems([{ ingredient: '', amount: '' }]);
       fetchData();
-      alert("👨‍🍳 Recipe Compiled!");
-    } catch (err) { alert("❌ " + err.message); }
+      alert("🧪 Recipe Compiled & Locked!");
+    } catch (err) { alert("❌ " + (err.response?.data?.message || err.message)); }
   };
 
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/transactions', transactionData);
-      setTransactionData({ menuId: '', quantity: '' });
-      fetchData();
-      alert("💸 Transaction Executed!");
+      // Placeholder for transaction submission
+      // await addTransaction(transactionData);
+      alert("❌ Transaction endpoint needs backend implementation");
+      // setTransactionData({ menuId: '', quantity: '' });
+      // fetchData();
+      // alert("💸 Transaction Executed!");
     } catch (err) { alert("❌ " + err.message); }
   };
 
