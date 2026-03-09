@@ -27,8 +27,8 @@ function App() {
       setIngredients(ingRes.data);
       setMenus(menuRes.data);
       setIsLoading(false);
-    } catch (err) {
-      console.error("Fetch error:", err);
+    } catch (error) {
+      console.error("Fetch error:", error);
       setIsLoading(false);
     }
   };
